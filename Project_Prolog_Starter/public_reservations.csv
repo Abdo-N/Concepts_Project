@@ -1,0 +1,11 @@
+Day,Month,Time,Group,Table
+2,3,morning,a,small
+2,3,evening,b,small
+2,3,morning,c,medium
+2,3,evening,d,large
+4,3,morning,e,xlarge
+4,3,evening,f,xlarge
+4,3,morning,g,medium
+4,3,morning,h,large
+4,3,evening,i,medium
+4,3,evening,j,large
