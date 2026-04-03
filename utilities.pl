@@ -1,4 +1,4 @@
-%I wrote these comments not AI I swear
+%I wrote these comments not AI I swear % me too
 
 write_reservations_to_csv(Filename, Schedule):- %Jumpstart
     open(Filename, write, Handle), %Open the file for the first time
@@ -37,8 +37,6 @@ add_ingredientslist([H|[]],Handle):- format(Handle, "~w~n", [H]).
 add_ingredientslist([H|T], Handle):-
     format(Handle, "~w;", [H]),
     add_ingredientslist(T,Handle).
-
-consult('sample_KB.pl').
 
 check_staff(Day, Time, ReservationsList):-
 	valid_reservationslist(ReservationsList),
