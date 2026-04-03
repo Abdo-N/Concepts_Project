@@ -1,7 +1,3 @@
-:-consult("sample_KB.pl"). 
-%So that we can consult the data base automatically%
-
-
 %I wrote these comments not AI I swear
 
 write_reservations_to_csv(Filename, Schedule):- %Jumpstart
