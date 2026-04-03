@@ -92,3 +92,41 @@ assign_groups([group(Name,Count,Timing)| T],Days,Acc,Schedule):-
     NewR = res(Day,Timing,Name,TableName), % makes the reservation for the group
     check_staff(Day,Timing,[NewR|Acc]), % checks the specific day and the time for the new reservation aligns with the staff avaliablity and capacity or not 
     assign_groups(T,Days,[NewR|Acc], Schedule).
+
+
+
+
+collect_ingredients([], []).
+
+collect_ingredients([First | Rest], AllIngredients) :-
+    recipe(First, Ings),          
+    collect_ingredients(Rest, RestIngredients),  
+    append(Ings, RestIngredients, AllIngredients).
+
+
+group_ingredients(GroupName, Ingredients) :-
+    order(GroupName, Dishes),           
+    collect_ingredients(Dishes, Ingredients). 
+
+
+add_day_ingredients(Day, Ingredients, [(Day, Existing) | Rest], [(Day, Combined) | Rest]) :-
+    append(Ingredients, Existing, Combined).
+
+add_day_ingredients(Day, Ingredients, [Other | Rest], [Other | NewRest]) :-
+    Other = (OtherDay, _),
+    OtherDay \= Day,
+    add_day_ingredients(Day, Ingredients, Rest, NewRest).
+
+add_day_ingredients(Day, Ingredients, [], [(Day, Ingredients)]).
+
+
+
+process_reservations([], Acc, Acc).
+
+process_reservations([res(Day, _, Group, _) | Rest], Acc, Result) :-
+    group_ingredients(Group, Ingredients),
+    add_day_ingredients(Day, Ingredients, Acc, Acc1),
+    process_reservations(Rest, Acc1, Result).
+
+needed_ingredients(Reservations, AllIngredients) :-
+    process_reservations(Reservations, [], AllIngredients).
