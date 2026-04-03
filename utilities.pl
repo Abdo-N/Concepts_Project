@@ -41,3 +41,25 @@ add_ingredientslist([H|[]],Handle):- format(Handle, "~w~n", [H]).
 add_ingredientslist([H|T], Handle):-
     format(Handle, "~w;", [H]),
     add_ingredientslist(T,Handle).
+
+
+schedule_all_reservations(Days, Schedule):-
+    all_groups(Groups),
+    assign_groups(Groups,Days,[],Schedule).
+
+% get all the groups that want reservations
+all_groups(Groups):-
+    findall(group(Name,Count,Timing),group(Name,Count,Timing),Groups).
+
+% base case of assign_groups, were if the groups are empty then we have found the final schedule
+assign_groups([],_,Schedule,Schedule).
+% recursive call of assign_groups
+assign_groups([group(Name,Count,Timing)| T],Days,Acc,Schedule):-
+    member(Day,Days), % check that the Day is avaiable in the restaurants available Days 
+    tables(TablesList),% returns the tables available in the restaurant 
+    member(t(TableName, Capacity),TablesList), % returns the Table(s) that matches and returns the table name and Capacity
+    Capacity >= Count, % makes sure that the capacity of the table is greater than or equal to the number of memebers 
+    \+ member(res(Day, Timing, _, TableName), Acc), % checks that no reservations in Acc are made so no two groups are assigned the same table on the same day at the same time
+    NewR = res(Day,Timing,Name,TableName), % makes the reservation for the group
+    check_staff(Day,Timing,[NewR|Acc]), % checks the specific day and the time for the new reservation aligns with the staff avaliablity and capacity or not 
+    assign_groups(T,Days,[NewR|Acc], Schedule).
