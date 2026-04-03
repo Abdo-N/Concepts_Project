@@ -38,6 +38,41 @@ add_ingredientslist([H|T], Handle):-
     format(Handle, "~w;", [H]),
     add_ingredientslist(T,Handle).
 
+consult('sample_KB.pl').
+
+check_staff(Day, Time, ReservationsList):-
+	valid_reservationslist(ReservationsList),
+	staff(Day, CountStaff),
+	count_reservations(Day, Time, ReservationsList, 0, Result), 
+	CountStaff >= Result.
+	% makes sure total table amount of all reservations is less than staff count at a given day and time
+
+% counts all the reservations in a list that are of Time and Day
+count_reservations(_, _, [], Total, Total).
+count_reservations(Day, Time, [H|T], Total, Result):-
+	H = res(Day, Time, GroupName, TableName),
+	TotalNew is Total + 1,
+	count_reservations(Day, Time, T, TotalNew, Result).
+count_reservations(Day, Time, [H|T], Total, Result):-
+	H = res(DayNew, TimeNew, GroupName, TableName),
+	(DayNew\=Day ; TimeNew\=Time), 
+	count_reservations(Day, Time, T, Total, Result).
+
+% checks if all reservations in a list are valid
+valid_reservationslist([]).
+valid_reservationslist([H|T]):-
+	valid_reservation(H),
+	valid_reservationslist(T).
+
+% checks if the given reservation is valid
+% for a reservation to be valid: 
+	% 1. the time of group arrival must be same as that of reservation
+	% 2. the table assigned to the group at that time must have enough seats
+valid_reservation(res(day(D,M), Time, GroupName, TableName)):-
+	group(GroupName, CountMembers, Time), % time of group arrival must be same as that of reservation
+	tables(TablesList), % provide list of available tables
+	member(t(TableName, Capacity), TablesList),
+	Capacity >= CountMembers. % enough seats available for group members
 
 schedule_all_reservations(Days, Schedule):-
     all_groups(Groups),
