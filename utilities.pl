@@ -1,5 +1,7 @@
 %I wrote these comments not AI I swear % me too 
 
+:-consult('public_kb').
+
 write_reservations_to_csv(Filename, Schedule):- %Jumpstart
     open(Filename, write, Handle), %Open the file for the first time
     reservation_csv_HELPER(Filename,Schedule,Handle). %Call helper
@@ -16,7 +18,6 @@ reservation_csv_HELPER(_, [res(day(D, M), Time, Group, Table)|T], Handle):-
     reservation_csv_HELPER(_,T,Handle).
     %continue recursing
     
-
 write_ingredients_to_csv(Filename, AllIngredients):- %Jumpstart
    
    open(Filename, write, Handle),
@@ -38,6 +39,8 @@ add_ingredientslist([H|[]],Handle):- format(Handle, "~w~n", [H]).
 add_ingredientslist([H|T], Handle):-
     format(Handle, "~w;", [H]),
     add_ingredientslist(T,Handle).
+	
+% --------------------------------------------------
 
 check_staff(Day, Time, ReservationsList):-
 	staff(Day, CountStaff),
@@ -45,18 +48,16 @@ check_staff(Day, Time, ReservationsList):-
 	CountStaff >= Result.
 	% makes sure total table amount of all reservations is less than staff count at a given day and time
 
-% base case
+% counts all the reservations in a list that are of Time and Day
 count_reservations(_, _, [], Total, Total).
-
-% matches day and time
-count_reservations(Day, Time, [res(Day, Time, _, _) | T], Acc, Result) :-
-    NewAcc is Acc + 1,
-    count_reservations(Day, Time, T, NewAcc, Result).
-
-% does NOT match day or time
-count_reservations(Day, Time, [res(D, Tm, _, _) | T], Acc, Result) :-
-    (D \= Day ; Tm \= Time),
-    count_reservations(Day, Time, T, Acc, Result).
+count_reservations(Day, Time, [res(Day, Time, GroupName, TableName)|T], Total, Result):-
+	TotalNew is Total + 1,
+	count_reservations(Day, Time, T, TotalNew, Result).
+count_reservations(Day, Time, [res(DayNew, TimeNew, GroupName, TableName)|T], Total, Result):-
+	(DayNew\=Day ; TimeNew\=Time), 
+	count_reservations(Day, Time, T, Total, Result).
+	
+% --------------------------------------------------
 	
 %Generates if Schedule is unbound
 %Validates if Schedule is provided
@@ -73,16 +74,33 @@ generate_schedule(Days, Schedule) :-
     reverse(ScheduleUnsorted, Schedule). %reverses the Schedule in the same order so that the backtracking doesnt affect the outcome
 
 validate_schedule(Days, Schedule) :-
-    forall(member(res(Day, Time, Group, Table), Schedule),%Checks each reservation made
-	( member(Day, Days), %ensures that the reservation is in allowed day where there is staff 
-	valid_reservation(res(Day, Time, Group, Table)))), %The group exists,The table exists and has enough capacity,The group’s timing matches the reservation.
-	forall(member(Day, Days)%ensures that the reservation is in allowed day where there is staff ,
-	( staff(Day, StaffCount),%checks the available staff from the knowledege base
-	count_reservations(Day, morning, Schedule, 0, MorningCount), MorningCount =< StaffCount, %counts morning reservations and checks that the staff can handle it 
-	count_reservations(Day, evening, Schedule, 0, EveningCount), EveningCount =< StaffCount)),%counts evening reservations and checks that the staff can handle it
-    forall(member(res(Day, Time, _, TableName), Schedule),,%Checks each reservation made in Schedule
-	\+ (member(res(Day, Time, _, TableName), Schedule,%Checks each reservation made isnt in Schedule
-           \+ member(res(Day, Time, _, TableName), Schedule))).%Checks each reservation made isnt in Schedule
+    % 1. every reservation is valid
+    forall(
+        member(res(Day, Time, Group, Table), Schedule), %Checks each reservation made
+        (
+            member(Day, Days), %ensures that the reservation is in allowed day where there is staff 
+            valid_reservation(res(Day, Time, Group, Table)) %The group exists,The table exists and has enough capacity,The group’s timing matches the reservation.
+        )
+    ),
+
+    % 2. staff constraint
+    forall(
+        member(Day, Days),
+        (
+            staff(Day, StaffCount), %ensures that the reservation is in allowed day where there is staff
+            count_reservations(Day, morning, Schedule, 0, MorningCount), 
+            MorningCount =< StaffCount, %counts morning reservations and checks that the staff can handle it
+            count_reservations(Day, evening, Schedule, 0, EveningCount),
+            EveningCount =< StaffCount %counts evening reservations and checks that the staff can handle it
+        )
+    ),
+
+    % 3. no duplicate reservations
+    \+ (
+        member(R, Schedule),
+        select(R, Schedule, Rest),
+        member(R, Rest)
+    ).
 
 % base case of assign_groups, were if the groups are empty then we have found the final schedule
 assign_groups([], _, Acc, Acc).
@@ -124,7 +142,7 @@ sort_groups_by_size(Groups, Sorted) :-
 
 get_group_size(group(_, Count, _), Count).
 
-
+% --------------------------------------------------
 
 collect_ingredients([], []).
 
@@ -137,6 +155,7 @@ group_ingredients(GroupName, Ingredients) :-
     order(GroupName, Dishes),    
     collect_ingredients(Dishes, Ingredients). 
 
+% --------------------------------------------------
 
 add_day_ingredients(Day, Ingredients, [(Day, Existing) | Rest], [(Day, Combined) | Rest]) :-
     append(Existing, Ingredients, Combined).
@@ -150,32 +169,26 @@ add_day_ingredients(Day, Ingredients, [], [(Day, Ingredients)]).
 
 process_reservations([], Acc, Acc).
 
-process_reservations([res(Day, _, Group, _) | Rest], Acc, Result) :-
+process_reservations([res(Day, Time, Group, Table) | Rest], Acc, Result) :-
     group_ingredients(Group, Ingredients),
     add_day_ingredients(Day, Ingredients, Acc, Acc1),
     process_reservations(Rest, Acc1, Result).
 
-	
-% Main predicate: needed_ingredients/2
-% Computes the ingredients needed for a list of reservations.
-% It allows AllIngredients to have any order, as long as each day's ingredients match.
+% allows AllIngredients to have any order, as long as each day's ingredients match
 needed_ingredients(Reservations, AllIngredients) :-
-    process_reservations(Reservations, [], Actual),  % Step 1: generate the full list of (Day, Ingredients)
-    same_days_multiset(Actual, AllIngredients).      % Step 2: compare with AllIngredients ignoring order
+    process_reservations(Reservations, [], Actual),  % generates full list of (Day, Ingredients)
+    same_days_multiset(Actual, AllIngredients).      % compares with AllIngredients ignoring order
 
-% same_days_multiset(+Actual, +Expected)
-% True if Actual and Expected lists of (Day, Ingredients) are "equivalent" per day
-%  - each day must appear once in both lists
-%  - ingredients can be in any order (multiset comparison)
-same_days_multiset([], []).  % Base case: both lists empty
+% Valid if Actual and Expected lists of (Day, Ingredients) are the same per day
+%  1. each day must appear once in both lists
+%  2. ingredients can be in any order for each day
+same_days_multiset([], []). 
 same_days_multiset([(Day, Ingredients)|Rest], Expected) :- 
-    select((Day, ExpectedIngredients), Expected, Remaining), % find the matching day in Expected
-    same_multiset(Ingredients, ExpectedIngredients),           % check that ingredients match as a multiset
-    same_days_multiset(Rest, Remaining).                      % recursively check remaining days
+    select((Day, ExpectedIngredients), Expected, Remaining), % finds ingredients for the same day
+    same_multiset(Ingredients, ExpectedIngredients),           % checks that ingredients are the same regardless of order
+    same_days_multiset(Rest, Remaining).                      % recursively checks remaining days
 
-% same_multiset(+List1, +List2)
-% True if List1 and List2 contain the same elements (including duplicates), order doesn't matter
-same_multiset([], []).      % Base case: both empty
+same_multiset([], []).  
 same_multiset([H|T], L2) :-
-    select(H, L2, L2Rest),  % remove one occurrence of H from L2
-    same_multiset(T, L2Rest).  % recursively check remaining elements
+    select(H, L2, L2Rest),  % remove one element (identical to H) from L2
+    same_multiset(T, L2Rest).  
