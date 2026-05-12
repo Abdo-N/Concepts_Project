@@ -1,0 +1,20 @@
+mostPopularDish :: [String] -> [String]
+mostPopularDish [] = []
+mostPopularDish list = maximumCount(map(\h -> (head h, length h)) (group (sort list)))
+
+maximumCount :: [(String, Int)] -> [String]
+maximumCount [] = []
+maximumCount pairs = [name | (name, count) <- pairs, count == maximum [c | (_, c) <- pairs]]
+
+
+countCategoryItems :: String -> Expense -> Int
+countCategoryItems _ (Item _ _ _) = 0
+countCategoryItems name (Category categoryName expenses) = if name == categoryName then countAllItems expenses
+															                              else sum (map (countCategoryItems name) expenses)
+
+countAllItems :: [Expense] -> Int
+countAllItems expenses = sum (map countItem expenses)
+
+countItem :: Expense -> Int
+countItem (Item _ _ _) = 1
+countItem (Category _ rest)  = countAllItems rest
