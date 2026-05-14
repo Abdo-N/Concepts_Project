@@ -1,3 +1,4 @@
+import Control.Monad.Accum (MonadAccum(look))
 data Month = Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec   deriving (Show, Eq)
 
 type Date = (Int, Month, Int)
@@ -50,29 +51,51 @@ shopping_list = [((15,Feb,2026),
 
 -- Start your code here
 
---Mariam
-mostPopularDish :: [String] -> [String]
-mostPopularDish [] = []
-mostPopularDish list = maximumCount(map(\h -> (head h, length h)) (group (sort list)))
+--Nader----------
 
-maximumCount :: [(String, Int)] -> [String]
-maximumCount [] = []
-maximumCount pairs = [name | (name, count) <- pairs, count == maximum [c | (_, c) <- pairs]]
+--handling if in case we subtract Feb 5 minus 10 days so we spill to jan
+prevMonth :: Month -> Month
+prevMonth Jan = Dec
+prevMonth Feb = Jan
+prevMonth Mar = Feb
+prevMonth Apr = Mar
+prevMonth May = Apr
+prevMonth Jun = May
+prevMonth Jul = Jun
+prevMonth Aug = Jul
+prevMonth Sep = Aug
+prevMonth Oct = Sep
+prevMonth Nov = Oct
+prevMonth Dec = Nov
 
+daysInMonth :: Month -> Int
+daysInMonth m
+    | m `elem` [Jan, Mar, May, Jul, Aug, Oct, Dec] = 31
+    | m == Feb = 28
+    | otherwise = 30
 
-countCategoryItems :: String -> Expense -> Int
-countCategoryItems _ (Item _ _ _) = 0
-countCategoryItems name (Category categoryName expenses) = if name == categoryName then countAllItems expenses
-															                              else sum (map (countCategoryItems name) expenses)
+--helper to subtract days
+subtractDays :: Date -> Int -> Date
+subtractDays (day, month, year) daysToSubtract 
+  | daysToSubtract >= day = subtractDays (daysInMonth (prevMonth month), prevMonth month, year) (daysToSubtract - day)
+  | otherwise = (day - daysToSubtract, month, year)
 
-countAllItems :: [Expense] -> Int
-countAllItems expenses = sum (map countItem expenses)
+-- Helper to look for ingredient and return their 
+lookupIngredient :: String -> [(String, Int, Price)] -> (Int, Price)
+lookupIngredient x [] = error "Ingredient not found"
+lookupIngredient x ((name, daysToDeliver, price):t)
+    | x == name = (daysToDeliver, price)
+    | otherwise = lookupIngredient x t
 
-countItem :: Expense -> Int
-countItem (Item _ _ _) = 1
-countItem (Category _ rest)  = countAllItems rest
+calculateDeliveryDates :: Date -> [Ingredient] -> [(Date, (String, Price))]
+calculateDeliveryDates _ [] = []
+calculateDeliveryDates date (SimpleIngredient x:t) = (deliveryDate, (x, price)) : calculateDeliveryDates date t
+    where
+    (days, price) = lookupIngredient x ingredient_info
+    deliveryDate  = subtractDays date days
+calculateDeliveryDates date (Recipe x ingredients:t) = calculateDeliveryDates date ingredients ++ calculateDeliveryDates date t
 
---Sarah
+--Sarah----------
 summarizeAllDeliveries :: [Date] -> [Delivery]
 summarizeAllDeliveries [] = []
 summarizeAllDeliveries x = mergeByDates ( makeSupplyListandConvertBacktoMonth( sortByYearMonthDayIng( convertMonthandAddQuantity ( collectIngredients x) ) ) )
@@ -151,3 +174,25 @@ mergeByDates [] = []
 mergeByDates [x] = [x]
 mergeByDates ((date1, supply1):(date2, supply2):t) | date1 == date2 = mergeByDates((date1, supply1++supply2):t)
 													| otherwise = (date1, supply1):mergeByDates((date2, supply2):t)
+
+--Mariam----------
+mostPopularDish :: [String] -> [String]
+mostPopularDish [] = []
+mostPopularDish list = maximumCount(map(\h -> (head h, length h)) (group (sort list)))
+
+maximumCount :: [(String, Int)] -> [String]
+maximumCount [] = []
+maximumCount pairs = [name | (name, count) <- pairs, count == maximum [c | (_, c) <- pairs]]
+
+
+countCategoryItems :: String -> Expense -> Int
+countCategoryItems _ (Item _ _ _) = 0
+countCategoryItems name (Category categoryName expenses) = if name == categoryName then countAllItems expenses
+															                              else sum (map (countCategoryItems name) expenses)
+
+countAllItems :: [Expense] -> Int
+countAllItems expenses = sum (map countItem expenses)
+
+countItem :: Expense -> Int
+countItem (Item _ _ _) = 1
+countItem (Category _ rest)  = countAllItems rest
