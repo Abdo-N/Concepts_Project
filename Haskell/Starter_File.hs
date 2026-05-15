@@ -1,4 +1,4 @@
-import Control.Monad.Accum (MonadAccum(look))
+import Data.List
 data Month = Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec   deriving (Show, Eq)
 
 type Date = (Int, Month, Int)
@@ -77,8 +77,11 @@ daysInMonth m
 --helper to subtract days
 subtractDays :: Date -> Int -> Date
 subtractDays (day, month, year) daysToSubtract 
-  | daysToSubtract >= day = subtractDays (daysInMonth (prevMonth month), prevMonth month, year) (daysToSubtract - day)
+  | daysToSubtract >= day = subtractDays (daysInMonth newMonth, newMonth, newYear)(daysToSubtract - day)
   | otherwise = (day - daysToSubtract, month, year)
+  where
+    newMonth = prevMonth month
+    newYear = if month == Jan then year - 1 else year
 
 -- Helper to look for ingredient and return their 
 lookupIngredient :: String -> [(String, Int, Price)] -> (Int, Price)
@@ -114,21 +117,23 @@ flattenRecipies [] = []
 flattenRecipies (SimpleIngredient x:t) = (SimpleIngredient x):(flattenRecipies t)
 flattenRecipies (Recipe x ingredients:t) = (flattenRecipies ingredients) ++ (flattenRecipies t)
 
+monthToInt :: Month -> Int
+monthToInt Jan = 1
+monthToInt Feb = 2
+monthToInt Mar = 3
+monthToInt Apr = 4
+monthToInt May = 5
+monthToInt Jun = 6
+monthToInt Jul = 7
+monthToInt Aug = 8
+monthToInt Sep = 9
+monthToInt Oct = 10
+monthToInt Nov = 11
+monthToInt Dec = 12
+
 convertMonthandAddQuantity :: [(Date, (String, Price))] -> [((Int,Int,Int), Supply)]
 convertMonthandAddQuantity [] = []
-convertMonthandAddQuantity (((day, month, year), (string, price)):t) | month == Jan = ((day, 1, year), (string, 1, price)):convertMonthandAddQuantity t
-													| month == Feb = ((day, 2, year), (string, 1, price)):convertMonthandAddQuantity t
-													| month == Mar = ((day, 3, year), (string, 1, price)):convertMonthandAddQuantity t
-													| month == Apr = ((day, 4, year), (string, 1, price)):convertMonthandAddQuantity t
-													| month == May = ((day, 5, year), (string, 1, price)):convertMonthandAddQuantity t
-													| month == Jun = ((day, 6, year), (string, 1, price)):convertMonthandAddQuantity t
-													| month == Jul = ((day, 7, year), (string, 1, price)):convertMonthandAddQuantity t
-													| month == Aug = ((day, 8, year), (string, 1, price)):convertMonthandAddQuantity t
-													| month == Sep = ((day, 9, year), (string, 1, price)):convertMonthandAddQuantity t
-													| month == Oct = ((day, 10, year), (string, 1, price)):convertMonthandAddQuantity t
-													| month == Nov = ((day, 11, year), (string, 1, price)):convertMonthandAddQuantity t
-													| month == Dec = ((day, 12, year), (string, 1, price)):convertMonthandAddQuantity t
-													| otherwise = error "Not a month" 
+convertMonthandAddQuantity (((day, month, year), (string, price)):t) = ((day, (monthToInt month), year), (string, 1, price)):convertMonthandAddQuantity t
 
 sortByYearMonthDayIng :: [((Int,Int,Int), Supply)] -> [((Int,Int,Int), Supply)]
 sortByYearMonthDayIng [] = []
@@ -150,21 +155,23 @@ insertAndMerge ((day1, month1, year1), (string1, amount1, price1)) (((day2, mont
 makeSupplyListandConvertBacktoMonth :: [((Int,Int,Int), Supply)] -> [Delivery]																								
 makeSupplyListandConvertBacktoMonth x = convertBacktoMonth(map convertSupplyList x)
 
+intToMonth :: Int -> Month
+intToMonth 1 = Jan
+intToMonth 2 = Feb
+intToMonth 3 = Mar
+intToMonth 4 = Apr
+intToMonth 5 = May
+intToMonth 6 = Jun
+intToMonth 7 = Jul
+intToMonth 8 = Aug
+intToMonth 9 = Sep
+intToMonth 10 = Oct
+intToMonth 11 = Nov
+intToMonth 12 = Dec
+
 convertBacktoMonth :: [((Int,Int,Int), [Supply])] -> [(Date, [Supply])]	
 convertBacktoMonth [] = []
-convertBacktoMonth (((day, month, year), supply):t) | month == 1 = ((day, Jan, year), supply):convertBacktoMonth t
-													| month == 2 = ((day, Feb, year), supply):convertBacktoMonth t
-													| month == 3 = ((day, Mar, year), supply):convertBacktoMonth t
-													| month == 4 = ((day, Apr, year), supply):convertBacktoMonth t
-													| month == 5 = ((day, May, year), supply):convertBacktoMonth t
-													| month == 6 = ((day, Jun, year), supply):convertBacktoMonth t
-													| month == 7 = ((day, Jul, year), supply):convertBacktoMonth t
-													| month == 8 = ((day, Aug, year), supply):convertBacktoMonth t
-													| month == 9 = ((day, Sep, year), supply):convertBacktoMonth t
-													| month == 10 = ((day, Oct, year), supply):convertBacktoMonth t
-													| month == 11 = ((day, Nov, year), supply):convertBacktoMonth t
-													| month == 12 = ((day, Dec, year), supply):convertBacktoMonth t
-													| otherwise = error "Not a month" 														
+convertBacktoMonth (((day, month, year), supply):t) = ((day, (intToMonth month), year), supply):convertBacktoMonth t													
 
 convertSupplyList :: ((Int,Int,Int), Supply) -> ((Int,Int,Int), [Supply])
 convertSupplyList (date, supply) = (date, [supply])
