@@ -181,6 +181,41 @@ mergeByDates [x] = [x]
 mergeByDates ((date1, supply1):(date2, supply2):t) | date1 == date2 = mergeByDates((date1, supply1++supply2):t)
 													| otherwise = (date1, supply1):mergeByDates((date2, supply2):t)
 
+--Abdelrahman Sameh 
+
+-- Main function: takes deliveries, returns one big Expense
+getDeliveryExpenses :: [Delivery] -> Expense
+getDeliveryExpenses deliveries = 
+   Category "Food Supplies" (flattenDeliveries deliveries)
+
+-- Helper: flatten deliveries
+flattenDeliveries :: [Delivery] -> [Expense]
+flattenDeliveries [] = []
+flattenDeliveries ((date, supplies):rest) = 
+  deliveryToItems (date, supplies) ++ flattenDeliveries rest
+
+-- Helper 1: Convert one delivery to a list of items
+deliveryToItems :: Delivery -> [Expense]
+deliveryToItems (date, []) =  []
+deliveryToItems (date, (name, qty, price):supplies) = 
+  Item name price date : deliveryToItems (date, supplies)
+
+
+-- Helper 2: Convert one supply to ONE item
+supplyToItem :: Date -> Supply -> Expense
+supplyToItem date (name, qty, price) = 
+  Item name price date 
+
+
+-- calculateTotalExpenses
+
+calculateTotalExpenses :: Expense -> Price
+calculateTotalExpenses (Item _ price _) =
+ price
+ 
+calculateTotalExpenses (Category _ children) = 
+ sum (map calculateTotalExpenses children)
+
 --Mariam----------
 mostPopularDish :: [String] -> [String]
 mostPopularDish [] = []
