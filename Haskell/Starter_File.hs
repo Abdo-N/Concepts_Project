@@ -102,10 +102,13 @@ summarizeAllDeliveries :: [Date] -> [Delivery]
 summarizeAllDeliveries [] = []
 summarizeAllDeliveries x = mergeByDates ( makeSupplyListandConvertBacktoMonth( sortByYearMonthDayIng( convertMonthandAddQuantity ( collectIngredients x) ) ) )
 
+-- Finds ingredients for each date from shopping list (recipies are flattened so everything is a simple ingredient) and generates a list of needed ingredients
+-- Finds delivery date for each ingredient in said list
 collectIngredients :: [Date] -> [(Date, (String, Price))]
 collectIngredients [] = []
 collectIngredients (date:t) = ( calculateDeliveryDates date ( flattenRecipies(findIngredients date shopping_list) ) ) ++ collectIngredients t
 
+-- When the user enters shopping list in the query, findIngredients recurses over it to get the correct ingredients list based on date
 findIngredients :: Date -> [(Date, [Ingredient])] -> [Ingredient]
 findIngredients _ [] = error "Date not found"
 findIngredients date1 ((date2, ingredients):t) | date1==date2 = ingredients
@@ -114,7 +117,7 @@ findIngredients date1 ((date2, ingredients):t) | date1==date2 = ingredients
 flattenRecipies :: [Ingredient] -> [Ingredient]
 flattenRecipies [] = []
 flattenRecipies (SimpleIngredient x:t) = (SimpleIngredient x):(flattenRecipies t)
-flattenRecipies (Recipe x ingredients:t) = (flattenRecipies ingredients) ++ (flattenRecipies t)
+flattenRecipies (Recipe x ingredients:t) = (flattenRecipies ingredients) ++ (flattenRecipies t) -- don't forget to flatten tail also in case there are more recipies
 
 monthToInt :: Month -> Int
 monthToInt Jan = 1
@@ -130,16 +133,20 @@ monthToInt Oct = 10
 monthToInt Nov = 11
 monthToInt Dec = 12
 
+-- Converts english months to numbers for each ingredient and adds its supply quantity (initially there's only one of each)
 convertMonthandAddQuantity :: [(Date, (String, Price))] -> [((Int,Int,Int), Supply)]
 convertMonthandAddQuantity [] = []
 convertMonthandAddQuantity (((day, month, year), (string, price)):t) = ((day, (monthToInt month), year), (string, 1, price)):convertMonthandAddQuantity t
 
+-- Basically insertion sort, goes through all cases of sorting from highest to least priority (year then month then day then string/name of ingredient)
 sortByYearMonthDayIng :: [((Int,Int,Int), Supply)] -> [((Int,Int,Int), Supply)]
 sortByYearMonthDayIng [] = []
 sortByYearMonthDayIng (h:t) = insertAndMerge h (sortByYearMonthDayIng t) 
 
+-- insertion by priority + condenses same name ingredients of the same date into one listing with a combined amount and price
 insertAndMerge :: ((Int,Int,Int), Supply) -> [((Int,Int,Int), Supply)] -> [((Int,Int,Int), Supply)]
-insertAndMerge x [] = [x]
+insertAndMerge x [] = [x] 
+-- compares heads together, if h1<h2 we put it before h2 and that's it, but if h1>h2 then we put h2 first and recurse to insert h1 in the right place in the tail
 insertAndMerge ((day1, month1, year1), (string1, amount1, price1)) (((day2, month2, year2), (string2, amount2, price2)):t) | year1 < year2 = ((day1, month1, year1), (string1, amount1, price1)):((day2, month2, year2), (string2, amount2, price2)):t
 																									| year1 == year2 && month1 < month2 = ((day1, month1, year1), (string1, amount1, price1)):((day2, month2, year2), (string2, amount2, price2)):t
 																									| year1 == year2 && month1 == month2 && day1 < day2 = ((day1, month1, year1), (string1, amount1, price1)):((day2, month2, year2), (string2, amount2, price2)):t
@@ -150,6 +157,7 @@ insertAndMerge ((day1, month1, year1), (string1, amount1, price1)) (((day2, mont
 																									| year1 == year2 && month1 > month2 = ((day2, month2, year2), (string2, amount2, price2)): (insertAndMerge ((day1, month1, year1), (string1, amount1, price1)) t)
 																									| year1 > year2 = ((day2, month2, year2), (string2, amount2, price2)): (insertAndMerge ((day1, month1, year1), (string1, amount1, price1)) t)
 																									| otherwise = error "Error in insertAndMerge"
+
 																									
 makeSupplyListandConvertBacktoMonth :: [((Int,Int,Int), Supply)] -> [Delivery]																								
 makeSupplyListandConvertBacktoMonth x = convertBacktoMonth(map convertSupplyList x)
@@ -170,11 +178,13 @@ intToMonth 12 = Dec
 
 convertBacktoMonth :: [((Int,Int,Int), [Supply])] -> [(Date, [Supply])]	
 convertBacktoMonth [] = []
-convertBacktoMonth (((day, month, year), supply):t) = ((day, (intToMonth month), year), supply):convertBacktoMonth t													
-
+convertBacktoMonth (((day, month, year), supply):t) = ((day, (intToMonth month), year), supply):convertBacktoMonth t	
+												
+-- takes each supply "item" (because at this point there's only one of each type of ingredient) and puts it in a list to prep for merging items in the same list later
 convertSupplyList :: ((Int,Int,Int), Supply) -> ((Int,Int,Int), [Supply])
 convertSupplyList (date, supply) = (date, [supply])
 
+-- takes a list of tuples of ingredients and their delivery dates then puts those of the same date together in one supply while maintaining their alphabetical order
 mergeByDates :: [Delivery] -> [Delivery]
 mergeByDates [] = []
 mergeByDates [x] = [x]
