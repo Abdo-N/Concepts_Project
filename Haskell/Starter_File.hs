@@ -1,4 +1,3 @@
-import Data.List
 data Month = Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec   deriving (Show, Eq)
 
 type Date = (Int, Month, Int)
@@ -185,21 +184,40 @@ mergeByDates ((date1, supply1):(date2, supply2):t) | date1 == date2 = mergeByDat
 --Mariam----------
 mostPopularDish :: [String] -> [String]
 mostPopularDish [] = []
-mostPopularDish list = maximumCount(map(\h -> (head h, length h)) (group (sort list)))
+mostPopularDish list = maximumCount(map(\h -> (head h, length h)) (group1 (sort list)))
+
+group1 :: Eq a => [a] -> [[a]]
+group1 [] = []
+group1 (x:xs) = groupHelper x xs [x]
+
+groupHelper :: Eq a => a -> [a] -> [a] -> [[a]]
+groupHelper _ [] acc = [acc]
+groupHelper prev (y:ys) acc = if prev == y then groupHelper y ys (acc ++ [y])
+								else acc : groupHelper y ys [y]
+
+insert :: Ord a => a -> [a] -> [a]
+insert x [] = [x]
+insert x (y:ys) | x < y = x:y:ys
+				|otherwise = y:insert x ys
+
+sort :: Ord a => [a] -> [a]
+sort [] = []
+sort (x:xs) = insert x (sort xs)
+
 
 maximumCount :: [(String, Int)] -> [String]
 maximumCount [] = []
-maximumCount pairs = [name | (name, count) <- pairs, count == maximum [c | (_, c) <- pairs]]
+maximumCount pairs = [name | (name, count) <- pairs, count ==maximum [c | (_, c) <- pairs]]
 
 
 countCategoryItems :: String -> Expense -> Int
 countCategoryItems _ (Item _ _ _) = 0
 countCategoryItems name (Category categoryName expenses) = if name == categoryName then countAllItems expenses
-															                              else sum (map (countCategoryItems name) expenses)
+															else sum (map (countCategoryItems name) expenses)
 
 countAllItems :: [Expense] -> Int
 countAllItems expenses = sum (map countItem expenses)
 
 countItem :: Expense -> Int
-countItem (Item _ _ _) = 1
-countItem (Category _ rest)  = countAllItems rest
+countItem (Item _ _ _)           = 1
+countItem (Category _ rest)  = countAllItems  rest
